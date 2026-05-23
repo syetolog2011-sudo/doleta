@@ -40,15 +40,10 @@ def send_all_info(message):
 
     full_text = (
         "📊 **Сколько осталось до смены сезонов:**\n\n"
-        "🌸 **До весны:**\n"
-        f"{spring_time}\n\n"
-        "☀️ **До лета:**\n"
-        f"{summer_time}\n\n"
-        "🍂 **До осени:**\n"
-        f"{autumn_time}\n\n"
-        "❄️ **До зимы:**\n"
-        f"{winter_time}\n\n"
-        "⚙️ _Все расчеты ведутся автоматически в реальном времени по **Московскому часовому поясу (МСК)** от 00:00 первого числа стартового месяца._"
+        "🌸 **До весны:**\n"f"{spring_time}\n\n"
+        "☀️ **До лета:**\n" f"{summer_time}\n\n"
+        "🍂 **До осени:**\n"f"{autumn_time}\n\n"
+        "❄️ **До зимы:**\n" f"{winter_time}\n\n"
     )
     
     bot.send_message(message.chat.id, full_text, parse_mode="Markdown")
