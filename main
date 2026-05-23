@@ -1,1 +1,75 @@
+import os
+import telebot
+from telebot import types
+from datetime import datetime
+import pytz
 
+# Инициализация бота. Токен берется из переменных окружения для безопасности на хостинге
+TOKEN = os.getenv("BOT_TOKEN")
+if not TOKEN:
+    raise ValueError("Ошибочка! Забыл указать BOT_TOKEN в переменных окружения хостинга.")
+
+bot = telebot.TeleBot(TOKEN)
+MOSCOW_TZ = pytz.timezone("Europe/Moscow")
+
+def get_remaining_time(target_month, target_year_offset=0):
+    """Вычисляет оставшееся время до 1-го числа указанного месяца по МСК."""
+    now = datetime.now(MOSCOW_TZ)
+    
+    # Определяем целевой год
+    target_year = now.year + target_year_offset
+    # Если целевой месяц уже прошел в этом году, значит речь о следующем годе
+    if now.month > target_month or (now.month == target_month and now.day >= 1):
+        if target_year_offset == 0:
+            target_year += 1
+            
+    target_date = MOSCOW_TZ.localize(datetime(target_year, target_month, 1, 0, 0, 0))
+    td = target_date - now
+    
+    days = td.days
+    hours = td.seconds // 3600
+    minutes = (td.seconds % 3600) // 60
+    
+    return f"⏳ **{days} дн. {hours} ч. {minutes} мин.**"
+
+def get_main_keyboard():
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    btn_spring = types.KeyboardButton("🌸 До весны")
+    btn_summer = types.KeyboardButton("☀️ До лета")
+    btn_autumn = types.KeyboardButton("🍂 До осени")
+    btn_winter = types.KeyboardButton("❄️ До зимы")
+    keyboard.add(btn_spring, btn_summer, btn_autumn, btn_winter)
+    return keyboard
+
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    bot.send_message(
+        message.chat.id,
+        "Привет! Я считаю точное время до начала времен года по **Московскому времени (МСК)**.\n"
+        "Жми на кнопки ниже 👇",
+        reply_markup=get_main_keyboard(),
+        parse_mode="Markdown"
+    )
+
+@bot.message_handler(content_types=['text'])
+def handle_text(message):
+    text = message.text
+    response = ""
+    
+    # Календарное начало сезонов: Март(3), Июнь(6), Сентябрь(9), Декабрь(12)
+    if text == "🌸 До весны":
+        response = f"🌱 До начала весны осталось:\n{get_remaining_time(3)}"
+    elif text == "☀️ До лета":
+        response = f"🌊 До начала лета осталось:\n{get_remaining_time(6)}"
+    elif text == "🍂 До осени":
+        response = f"🍁 До начала осени осталось:\n{get_remaining_time(9)}"
+    elif text == "❄️ До зимы":
+        response = f"☃️ До начала зимы осталось:\n{get_remaining_time(12)}"
+    else:
+        response = "Пользуйся кнопками на клавиатуре, пожалуйста! 🙌"
+        
+    bot.send_message(message.chat.id, response, reply_markup=get_main_keyboard(), parse_mode="Markdown")
+
+if __name__ == "__main__":
+    print("Бот успешно запущен по МСК времени...")
+    bot.infinity_polling()
