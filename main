@@ -4,7 +4,7 @@ from telebot import types
 from datetime import datetime
 import pytz
 
-# Инициализация бота. Токен берется из переменных окружения для безопасности на хостинге
+# Инициализация бота. Токен берется из переменных окружения хостинга
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("Ошибочка! Забыл указать BOT_TOKEN в переменных окружения хостинга.")
@@ -12,16 +12,14 @@ if not TOKEN:
 bot = telebot.TeleBot(TOKEN)
 MOSCOW_TZ = pytz.timezone("Europe/Moscow")
 
-def get_remaining_time(target_month, target_year_offset=0):
+def get_remaining_time(target_month):
     """Вычисляет оставшееся время до 1-го числа указанного месяца по МСК."""
     now = datetime.now(MOSCOW_TZ)
+    target_year = now.year
     
-    # Определяем целевой год
-    target_year = now.year + target_year_offset
-    # Если целевой месяц уже прошел в этом году, значит речь о следующем годе
+    # Если этот месяц в текущем году уже наступил/прошел, считаем до следующего года
     if now.month > target_month or (now.month == target_month and now.day >= 1):
-        if target_year_offset == 0:
-            target_year += 1
+        target_year += 1
             
     target_date = MOSCOW_TZ.localize(datetime(target_year, target_month, 1, 0, 0, 0))
     td = target_date - now
@@ -32,44 +30,34 @@ def get_remaining_time(target_month, target_year_offset=0):
     
     return f"⏳ **{days} дн. {hours} ч. {minutes} мин.**"
 
-def get_main_keyboard():
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    btn_spring = types.KeyboardButton("🌸 До весны")
-    btn_summer = types.KeyboardButton("☀️ До лета")
-    btn_autumn = types.KeyboardButton("🍂 До осени")
-    btn_winter = types.KeyboardButton("❄️ До зимы")
-    keyboard.add(btn_spring, btn_summer, btn_autumn, btn_winter)
-    return keyboard
+@bot.message_handler(commands=['start', 'help', 'how'])
+def send_all_info(message):
+    # Собираем таймеры для каждого времени года
+    spring_time = get_remaining_time(3)   # Март
+    summer_time = get_remaining_time(6)   # Июнь
+    autumn_time = get_remaining_time(9)   # Сентябрь
+    winter_time = get_remaining_time(12)  # Декабрь
 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.send_message(
-        message.chat.id,
-        "Привет! Я считаю точное время до начала времен года по **Московскому времени (МСК)**.\n"
-        "Жми на кнопки ниже 👇",
-        reply_markup=get_main_keyboard(),
-        parse_mode="Markdown"
+    full_text = (
+        "📊 **Сколько осталось до смены сезонов:**\n\n"
+        "🌸 **До весны:**\n"
+        f"{spring_time}\n\n"
+        "☀️ **До лета:**\n"
+        f"{summer_time}\n\n"
+        "🍂 **До осени:**\n"
+        f"{autumn_time}\n\n"
+        "❄️ **До зимы:**\n"
+        f"{winter_time}\n\n"
+        "⚙️ _Все расчеты ведутся автоматически в реальном времени по **Московскому часовому поясу (МСК)** от 00:00 первого числа стартового месяца._"
     )
-
-@bot.message_handler(content_types=['text'])
-def handle_text(message):
-    text = message.text
-    response = ""
     
-    # Календарное начало сезонов: Март(3), Июнь(6), Сентябрь(9), Декабрь(12)
-    if text == "🌸 До весны":
-        response = f"🌱 До начала весны осталось:\n{get_remaining_time(3)}"
-    elif text == "☀️ До лета":
-        response = f"🌊 До начала лета осталось:\n{get_remaining_time(6)}"
-    elif text == "🍂 До осени":
-        response = f"🍁 До начала осени осталось:\n{get_remaining_time(9)}"
-    elif text == "❄️ До зимы":
-        response = f"☃️ До начала зимы осталось:\n{get_remaining_time(12)}"
-    else:
-        response = "Пользуйся кнопками на клавиатуре, пожалуйста! 🙌"
-        
-    bot.send_message(message.chat.id, response, reply_markup=get_main_keyboard(), parse_mode="Markdown")
+    bot.send_message(message.chat.id, full_text, parse_mode="Markdown")
+
+# Настройка меню (будет показывать только одну команду)
+bot.set_my_commands([
+    types.BotCommand("how", "Узнать сколько осталось до всех сезонов 📅")
+])
 
 if __name__ == "__main__":
-    print("Бот успешно запущен по МСК времени...")
+    print("Бот запущен. Доступна только команда /how...")
     bot.infinity_polling()
